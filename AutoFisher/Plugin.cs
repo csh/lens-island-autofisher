@@ -50,7 +50,7 @@ public class Plugin : BaseUnityPlugin
 
         if (_eventsSubscribed) yield break; // Prevent double subscription
 
-        Logger.LogInfo("FishingController instance found, subscribing to events");
+        Logger.LogDebug("FishingController instance found, subscribing to events");
         
         // Subscribe to state change events
         FishingController.GameStateChange += HandleStateChange;
@@ -133,20 +133,15 @@ public class Plugin : BaseUnityPlugin
         if (!_isEnabled.Value || FishingController.GameState != MinigameState.Active)
             return;
 
-        Logger.LogDebug($"Fishing crit indicated: {critType}");
-
         // Only respond to Good crits to maximize success rate
         if (critType == FishingPattern.FishingCritType.Good)
         {
+            Logger.LogInfo("Simulating fishing input");
             StartCoroutine(DelayedResponse());
         }
         else if (critType == FishingPattern.FishingCritType.Bad)
         {
-            Logger.LogDebug("Bad crit detected - avoiding input");
-        }
-        else if (critType == FishingPattern.FishingCritType.Miss)
-        {
-            Logger.LogDebug("Miss crit detected - no action needed");
+            Logger.LogInfo($"Skipping bad click window");
         }
     }
 
@@ -158,7 +153,6 @@ public class Plugin : BaseUnityPlugin
         // Verify we're still in active state and respond
         if (FishingController.GameState == MinigameState.Active)
         {
-            Logger.LogInfo("Simulating fishing input");
             SimulatePlayerInput();
         }
     }
