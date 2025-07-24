@@ -13,13 +13,12 @@ public class Plugin : BaseUnityPlugin
 {
     private ConfigEntry<bool> _isEnabled;
     private bool _inGameScene;
+    private bool _waitingForBite;
     private bool _eventsSubscribed;
     private const float ReactionTime = 0.1f;
 
     private void Awake()
     {
-        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_NAME} is loaded!");
-
         _isEnabled = Config.Bind("AutoFisher", "Enabled", true, "Enable/disable fishing automation");
 
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -61,6 +60,7 @@ public class Plugin : BaseUnityPlugin
 
     private void CleanupAutomation()
     {
+        _waitingForBite = false;
         if (_eventsSubscribed && FishingController.Instance != null)
         {
             FishingController.GameStateChange -= HandleStateChange;
@@ -71,20 +71,24 @@ public class Plugin : BaseUnityPlugin
 
     private void HandleStateChange(MinigameState state)
     {
-        Logger.LogInfo($"Fishing state changed to: {state}");
+        Logger.LogDebug($"Fishing state changed to: {state}");
 
         switch (state)
         {
             case MinigameState.Setup:
-                Logger.LogInfo("Fishing minigame setup detected");
+                Logger.LogDebug("Fishing minigame setup detected");
                 break;
                 
             case MinigameState.Pregame:
-                Logger.LogInfo("Fishing pregame state - player needs to click when fish bites");
+                if (_waitingForBite) break;
+                Logger.LogDebug("Fishing pregame state - player needs to click when fish bites");
+                _waitingForBite = true;
+                StartCoroutine(MonitorForBite());
                 break;
                 
             case MinigameState.Active:
-                Logger.LogInfo("Fishing minigame active - automation ready");
+                Logger.LogDebug("Fishing minigame active - automation ready");
+                _waitingForBite = false;
                 break;
                 
             case MinigameState.Win:
@@ -96,12 +100,31 @@ public class Plugin : BaseUnityPlugin
                 break;
                 
             case MinigameState.Canceled:
-                Logger.LogInfo("Fishing minigame was canceled");
+                Logger.LogDebug("Fishing minigame was canceled");
                 break;
                 
             case MinigameState.InActive:
-                Logger.LogInfo("Fishing minigame ended");
+                Logger.LogDebug("Fishing minigame ended");
                 break;
+        }
+    }
+    
+    private IEnumerator MonitorForBite()
+    {
+        if (_waitingForBite == false) yield break;
+        
+        while (_waitingForBite && FishingController.GameState == MinigameState.Pregame)
+        {
+            var activeRod = FishingRod.ActiveRod;
+            if (activeRod?.line?.state == FishingLineBehaviour.LineState.Biting)
+            {
+                Logger.LogInfo("Bite detected, starting minigame!");
+                FishingController.Instance.hooked = true;
+                _waitingForBite = false;
+                yield break;
+            }
+        
+            yield return new WaitForSeconds(0.05f); // Check frequently
         }
     }
 
@@ -110,7 +133,7 @@ public class Plugin : BaseUnityPlugin
         if (!_isEnabled.Value || FishingController.GameState != MinigameState.Active)
             return;
 
-        Logger.LogInfo($"Fishing crit indicated: {critType}");
+        Logger.LogDebug($"Fishing crit indicated: {critType}");
 
         // Only respond to Good crits to maximize success rate
         if (critType == FishingPattern.FishingCritType.Good)
@@ -119,11 +142,11 @@ public class Plugin : BaseUnityPlugin
         }
         else if (critType == FishingPattern.FishingCritType.Bad)
         {
-            Logger.LogInfo("Bad crit detected - avoiding input");
+            Logger.LogDebug("Bad crit detected - avoiding input");
         }
         else if (critType == FishingPattern.FishingCritType.Miss)
         {
-            Logger.LogInfo("Miss crit detected - no action needed");
+            Logger.LogDebug("Miss crit detected - no action needed");
         }
     }
 
@@ -135,8 +158,8 @@ public class Plugin : BaseUnityPlugin
         // Verify we're still in active state and respond
         if (FishingController.GameState == MinigameState.Active)
         {
+            Logger.LogInfo("Simulating fishing input");
             SimulatePlayerInput();
-            Logger.LogInfo("Responded to Good crit");
         }
     }
 
