@@ -19,7 +19,7 @@ source = "LICENSE"
 target = "LICENSE"
 
 [[build.copy]]
-source = "Autofisher/bin/Release/AutoFisher.dll"
+source = "AutoFisher/bin/Release/AutoFisher.dll"
 target = "BepInEx/plugins/AutoFisher.dll"
 
 [publish]
