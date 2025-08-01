@@ -15,6 +15,7 @@ public class Plugin : BaseUnityPlugin
     private bool _inGameScene;
     private bool _waitingForBite;
     private bool _eventsSubscribed;
+    // TODO: Configurable sliding reaction time?
     private const float ReactionTime = 0.1f;
 
     private void Awake()
@@ -24,11 +25,11 @@ public class Plugin : BaseUnityPlugin
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void OnSceneLoaded(Scene arg0, LoadSceneMode arg1)
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        _inGameScene = arg0.name is not ("MainMenu" or "LoadingScreen" or "Boot" or "Intro");
+        _inGameScene = scene.name is not ("MainMenu" or "LoadingScreen" or "Boot" or "Intro");
         
-        CleanupAutomation(); // Always cleanup first
+        CleanupAutomation();
         
         if (_inGameScene)
         {
@@ -40,7 +41,6 @@ public class Plugin : BaseUnityPlugin
     {
         if (!_isEnabled.Value || _eventsSubscribed) return;
 
-        // Wait for FishingController to be available
         StartCoroutine(WaitForFishingController());
     }
 
@@ -48,11 +48,10 @@ public class Plugin : BaseUnityPlugin
     {
         yield return new WaitUntil(() => FishingController.Instance);
 
-        if (_eventsSubscribed) yield break; // Prevent double subscription
+        if (_eventsSubscribed) yield break;
 
         Logger.LogDebug("FishingController instance found, subscribing to events");
         
-        // Subscribe to state change events
         FishingController.GameStateChange += HandleStateChange;
         FishingController.IndicateFishingCrit += HandleFishingCrit;
         _eventsSubscribed = true;
@@ -124,7 +123,7 @@ public class Plugin : BaseUnityPlugin
                 yield break;
             }
         
-            yield return new WaitForSeconds(0.05f); // Check frequently
+            yield return new WaitForSeconds(0.05f);
         }
     }
 
@@ -133,24 +132,20 @@ public class Plugin : BaseUnityPlugin
         if (!_isEnabled.Value || FishingController.GameState != MinigameState.Active)
             return;
 
-        // Only respond to Good crits to maximize success rate
         if (critType == FishingPattern.FishingCritType.Good)
         {
-            Logger.LogInfo("Simulating fishing input");
+            Logger.LogDebug("Simulating fishing input");
             StartCoroutine(DelayedResponse());
         }
         else if (critType == FishingPattern.FishingCritType.Bad)
         {
-            Logger.LogInfo($"Skipping bad click window");
+            Logger.LogDebug($"Skipping bad click window");
         }
     }
 
     private IEnumerator DelayedResponse()
     {
-        // Add a small delay to simulate human reaction time
         yield return new WaitForSeconds(ReactionTime);
-        
-        // Verify we're still in active state and respond
         if (FishingController.GameState == MinigameState.Active)
         {
             SimulatePlayerInput();
@@ -161,8 +156,7 @@ public class Plugin : BaseUnityPlugin
     {
         try
         {
-            // Find the fishing state and call the Reel method
-            var player = Singleton<Player>.Instance;
+            var player = Player.Instance;
             if (player?.currentState is Lenstate_Fishing fishingState)
             {
                 fishingState.Reel();

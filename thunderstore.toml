@@ -1,0 +1,32 @@
+[general]
+repository = "https://thunderstore.io"
+
+[package]
+namespace = "smrkn"
+name = "AutoFisher"
+versionNumber = "0.1.0"
+description = "Automated fishing for those that don't enjoy the minigame."
+websiteUrl = "https://github.com/csh/lens-island-autofisher"
+
+[package.dependencies]
+BepInEx-BepInExPack_LensIsland = "5.4.2303"
+
+[build]
+icon = "/icon.png"
+
+[[build.copy]]
+source = "LICENSE"
+target = "LICENSE"
+
+[[build.copy]]
+source = "Autofisher/bin/Release/AutoFisher.dll"
+target = "BepInEx/plugins/AutoFisher.dll"
+
+[publish]
+categories = [
+    "mods"
+]
+
+communities = [
+    "lens-island"
+]

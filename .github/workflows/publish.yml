@@ -1,0 +1,13 @@
+﻿name: Publish
+on:
+  release:
+    types:
+      - released
+jobs:
+  publish:
+    name: Publish to Thunderstore and Github
+    uses: csh/lens-island-publish-action/.github/workflows/publish.yml@main
+    with:
+      package_version: ${{ github.ref_name }}
+    secrets:
+      THUNDERSTORE_TOKEN: ${{ secrets.THUNDERSTORE_TOKEN }}
